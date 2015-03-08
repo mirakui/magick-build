@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Usage: ruby-build [-kvp] <definition> <prefix>
-#        ruby-build --definitions
+# Usage: magick-build [-kvp] <definition> <prefix>
+#        magick-build --definitions
 #
 #   -k/--keep        Do not remove source tree after installation
 #   -v/--verbose     Verbose mode: print compilation status to stdout
@@ -9,7 +9,7 @@
 #   --definitions    List all built-in definitions
 #
 
-RUBY_BUILD_VERSION="20150303"
+MAGICK_BUILD_VERSION="20150303"
 
 set -E
 exec 3<&2 # preserve original stderr at fd 3
@@ -309,8 +309,8 @@ fetch_tarball() {
     checksum="${package_url#*#}"
     package_url="${package_url%%#*}"
 
-    if [ -n "$RUBY_BUILD_MIRROR_URL" ]; then
-      mirror_url="${RUBY_BUILD_MIRROR_URL}/$checksum"
+    if [ -n "$MAGICK_BUILD_MIRROR_URL" ]; then
+      mirror_url="${MAGICK_BUILD_MIRROR_URL}/$checksum"
     fi
   fi
 
@@ -350,8 +350,8 @@ reuse_existing_tarball() {
   fi
 
   # Reuse previously downloaded file in cache location
-  [ -n "$RUBY_BUILD_CACHE_PATH" ] || return 1
-  local cached_package_filename="${RUBY_BUILD_CACHE_PATH}/$package_filename"
+  [ -n "$MAGICK_BUILD_CACHE_PATH" ] || return 1
+  local cached_package_filename="${MAGICK_BUILD_CACHE_PATH}/$package_filename"
 
   [ -e "$cached_package_filename" ] || return 1
   verify_checksum "$cached_package_filename" "$checksum" >&4 2>&1 || return 1
@@ -374,8 +374,8 @@ download_tarball() {
     return 1
   fi
 
-  if [ -n "$RUBY_BUILD_CACHE_PATH" ]; then
-    local cached_package_filename="${RUBY_BUILD_CACHE_PATH}/$package_filename"
+  if [ -n "$MAGICK_BUILD_CACHE_PATH" ]; then
+    local cached_package_filename="${MAGICK_BUILD_CACHE_PATH}/$package_filename"
     { mv "$package_filename" "$cached_package_filename"
       ln -s "$cached_package_filename" "$package_filename"
     } >&4 2>&1 || return 1
@@ -390,8 +390,8 @@ fetch_git() {
   echo "Cloning ${git_url}..." >&2
 
   if type git &>/dev/null; then
-    if [ -n "$RUBY_BUILD_CACHE_PATH" ]; then
-      pushd "$RUBY_BUILD_CACHE_PATH" >&4
+    if [ -n "$MAGICK_BUILD_CACHE_PATH" ]; then
+      pushd "$MAGICK_BUILD_CACHE_PATH" >&4
       local clone_name="$(sanitize "$git_url")"
       if [ -e "${clone_name}" ]; then
         { cd "${clone_name}"
@@ -400,7 +400,7 @@ fetch_git() {
       else
         git clone --bare --branch "$git_ref" "$git_url" "${clone_name}" >&4 2>&1
       fi
-      git_url="$RUBY_BUILD_CACHE_PATH/${clone_name}"
+      git_url="$MAGICK_BUILD_CACHE_PATH/${clone_name}"
       popd >&4
     fi
 
@@ -471,7 +471,7 @@ build_package_standard() {
     MAKE_OPTS="-j $(num_cpu_cores)"
   fi
 
-  # Support YAML_CONFIGURE_OPTS, RUBY_CONFIGURE_OPTS, etc.
+  # Support YAML_CONFIGURE_OPTS, MAGICK_CONFIGURE_OPTS, etc.
   local package_var_name="$(capitalize "${package_name%%-*}")"
   local PACKAGE_CONFIGURE="${package_var_name}_CONFIGURE"
   local PACKAGE_PREFIX_PATH="${package_var_name}_PREFIX_PATH"
@@ -521,7 +521,7 @@ build_package_ree_installer() {
   fi
 
   local option
-  for option in $RUBY_CONFIGURE_OPTS ${RUBY_CONFIGURE_OPTS_ARRAY[@]}; do
+  for option in $MAGICK_CONFIGURE_OPTS ${MAGICK_CONFIGURE_OPTS_ARRAY[@]}; do
     options="$options -c $option"
   done
 
@@ -536,11 +536,11 @@ build_package_rbx() {
   local package_name="$1"
 
   { [ ! -e "Gemfile" ] || bundle --path=vendor/bundle
-    if [ -n "$RUBY_BUILD_CACHE_PATH" ]; then
+    if [ -n "$MAGICK_BUILD_CACHE_PATH" ]; then
       mkdir -p vendor
-      ln -s "$RUBY_BUILD_CACHE_PATH" vendor/prebuilt
+      ln -s "$MAGICK_BUILD_CACHE_PATH" vendor/prebuilt
     fi
-    RUBYOPT="-rubygems $RUBYOPT" ./configure --prefix="$PREFIX_PATH" $RUBY_CONFIGURE_OPTS "${RUBY_CONFIGURE_OPTS_ARRAY[@]}"
+    RUBYOPT="-rubygems $RUBYOPT" ./configure --prefix="$PREFIX_PATH" $MAGICK_CONFIGURE_OPTS "${MAGICK_CONFIGURE_OPTS_ARRAY[@]}"
     rake install
     fix_rbx_gem_binstubs "$PREFIX_PATH"
     fix_rbx_irb "$PREFIX_PATH"
@@ -701,7 +701,7 @@ require_gcc() {
   if [ -z "$gcc" ]; then
     { echo
       colorize 1 "ERROR"
-      echo ": This package must be compiled with GCC, but ruby-build couldn't"
+      echo ": This package must be compiled with GCC, but magick-build couldn't"
       echo "find a suitable \`gcc\` executable on your system. Please install GCC"
       echo "and try again."
       echo
@@ -797,7 +797,7 @@ verify_gcc() {
 require_llvm() {
   local llvm_version="$1"
   if [ "$(uname -s)" = "Darwin" ] && [ "$(osx_version)" -ge 1010 ]; then
-    if [[ "$RUBY_CONFIGURE_OPTS" != *--llvm-* ]]; then
+    if [[ "$MAGICK_CONFIGURE_OPTS" != *--llvm-* ]]; then
       if [ "$llvm_version" = "3.2" ]; then
         package_option ruby configure --prebuilt-name="llvm-3.2-x86_64-apple-darwin13.tar.bz2"
       else
@@ -825,7 +825,7 @@ require_llvm() {
 }
 
 needs_yaml() {
-  [[ "$RUBY_CONFIGURE_OPTS" != *--with-libyaml-dir=* ]] &&
+  [[ "$MAGICK_CONFIGURE_OPTS" != *--with-libyaml-dir=* ]] &&
   ! use_homebrew_yaml
 }
 
@@ -839,7 +839,7 @@ use_homebrew_yaml() {
 }
 
 use_homebrew_readline() {
-  if [[ "$RUBY_CONFIGURE_OPTS" != *--with-readline-dir=* ]]; then
+  if [[ "$MAGICK_CONFIGURE_OPTS" != *--with-readline-dir=* ]]; then
     local libdir="$(brew --prefix readline 2>/dev/null || true)"
     if [ -d "$libdir" ]; then
       package_option ruby configure --with-readline-dir="$libdir"
@@ -852,7 +852,7 @@ use_homebrew_readline() {
 has_broken_mac_openssl() {
   [ "$(uname -s)" = "Darwin" ] &&
   [[ "$(/usr/bin/openssl version 2>/dev/null || true)" = "OpenSSL 0.9.8"?* ]] &&
-  [[ "$RUBY_CONFIGURE_OPTS" != *--with-openssl-dir=* ]] &&
+  [[ "$MAGICK_CONFIGURE_OPTS" != *--with-openssl-dir=* ]] &&
   ! use_homebrew_openssl
 }
 
@@ -975,12 +975,12 @@ apply_ruby_patch() {
 
 version() {
   local git_revision
-  # Read the revision from git if the remote points to "ruby-build" repository
-  if GIT_DIR="$RUBY_BUILD_INSTALL_PREFIX/.git" git remote -v 2>/dev/null | grep -q /ruby-build; then
-    git_revision="$(GIT_DIR="$RUBY_BUILD_INSTALL_PREFIX/.git" git describe --tags HEAD 2>/dev/null || true)"
+  # Read the revision from git if the remote points to "magick-build" repository
+  if GIT_DIR="$MAGICK_BUILD_INSTALL_PREFIX/.git" git remote -v 2>/dev/null | grep -q /magick-build; then
+    git_revision="$(GIT_DIR="$MAGICK_BUILD_INSTALL_PREFIX/.git" git describe --tags HEAD 2>/dev/null || true)"
     git_revision="${git_revision#v}"
   fi
-  echo "ruby-build ${git_revision:-$RUBY_BUILD_VERSION}"
+  echo "magick-build ${git_revision:-$MAGICK_BUILD_VERSION}"
 }
 
 usage() {
@@ -989,7 +989,7 @@ usage() {
 }
 
 list_definitions() {
-  { for DEFINITION_DIR in "${RUBY_BUILD_DEFINITIONS[@]}"; do
+  { for DEFINITION_DIR in "${MAGICK_BUILD_DEFINITIONS[@]}"; do
       [ -d "$DEFINITION_DIR" ] && ls "$DEFINITION_DIR"
     done
   } | sort_versions | uniq
@@ -1005,10 +1005,10 @@ unset VERBOSE
 unset KEEP_BUILD_PATH
 unset HAS_PATCH
 
-RUBY_BUILD_INSTALL_PREFIX="$(abs_dirname "$0")/.."
+MAGICK_BUILD_INSTALL_PREFIX="$(abs_dirname "$0")/.."
 
 OLDIFS="$IFS"
-IFS=: RUBY_BUILD_DEFINITIONS=($RUBY_BUILD_DEFINITIONS ${RUBY_BUILD_ROOT:-$RUBY_BUILD_INSTALL_PREFIX}/share/ruby-build)
+IFS=: MAGICK_BUILD_DEFINITIONS=($MAGICK_BUILD_DEFINITIONS ${MAGICK_BUILD_ROOT:-$MAGICK_BUILD_INSTALL_PREFIX}/share/magick-build)
 IFS="$OLDIFS"
 
 parse_options "$@"
@@ -1046,7 +1046,7 @@ DEFINITION_PATH="${ARGUMENTS[0]}"
 if [ -z "$DEFINITION_PATH" ]; then
   usage 1 >&2
 elif [ ! -f "$DEFINITION_PATH" ]; then
-  for DEFINITION_DIR in "${RUBY_BUILD_DEFINITIONS[@]}"; do
+  for DEFINITION_DIR in "${MAGICK_BUILD_DEFINITIONS[@]}"; do
     if [ -f "${DEFINITION_DIR}/${DEFINITION_PATH}" ]; then
       DEFINITION_PATH="${DEFINITION_DIR}/${DEFINITION_PATH}"
       break
@@ -1054,7 +1054,7 @@ elif [ ! -f "$DEFINITION_PATH" ]; then
   done
 
   if [ ! -f "$DEFINITION_PATH" ]; then
-    echo "ruby-build: definition not found: ${DEFINITION_PATH}" >&2
+    echo "magick-build: definition not found: ${DEFINITION_PATH}" >&2
     exit 2
   fi
 fi
@@ -1073,7 +1073,7 @@ else
 fi
 
 # Check if TMPDIR is accessible and can hold executables.
-tmp_executable="${TMP}/ruby-build-test.$$"
+tmp_executable="${TMP}/magick-build-test.$$"
 noexec=""
 if mkdir -p "$TMP" && touch "$tmp_executable" 2>/dev/null; then
   cat > "$tmp_executable" <<-EOF
@@ -1082,13 +1082,13 @@ if mkdir -p "$TMP" && touch "$tmp_executable" 2>/dev/null; then
 	EOF
   chmod +x "$tmp_executable"
 else
-  echo "ruby-build: TMPDIR=$TMP is set to a non-accessible location" >&2
+  echo "magick-build: TMPDIR=$TMP is set to a non-accessible location" >&2
   exit 1
 fi
 "$tmp_executable" 2>/dev/null || noexec=1
 rm -f "$tmp_executable"
 if [ -n "$noexec" ]; then
-  echo "ruby-build: TMPDIR=$TMP cannot hold executables (partition possibly mounted with \`noexec\`)" >&2
+  echo "magick-build: TMPDIR=$TMP cannot hold executables (partition possibly mounted with \`noexec\`)" >&2
   exit 1
 fi
 
@@ -1110,27 +1110,27 @@ if [ -z "$MAKE" ]; then
   fi
 fi
 
-if [ -n "$RUBY_BUILD_CACHE_PATH" ] && [ -d "$RUBY_BUILD_CACHE_PATH" ]; then
-  RUBY_BUILD_CACHE_PATH="${RUBY_BUILD_CACHE_PATH%/}"
+if [ -n "$MAGICK_BUILD_CACHE_PATH" ] && [ -d "$MAGICK_BUILD_CACHE_PATH" ]; then
+  MAGICK_BUILD_CACHE_PATH="${MAGICK_BUILD_CACHE_PATH%/}"
 else
-  unset RUBY_BUILD_CACHE_PATH
+  unset MAGICK_BUILD_CACHE_PATH
 fi
 
-if [ -z "$RUBY_BUILD_MIRROR_URL" ]; then
-  RUBY_BUILD_MIRROR_URL="http://dqw8nmjcqpjn7.cloudfront.net"
+if [ -z "$MAGICK_BUILD_MIRROR_URL" ]; then
+  MAGICK_BUILD_MIRROR_URL="http://dqw8nmjcqpjn7.cloudfront.net"
 else
-  RUBY_BUILD_MIRROR_URL="${RUBY_BUILD_MIRROR_URL%/}"
+  MAGICK_BUILD_MIRROR_URL="${MAGICK_BUILD_MIRROR_URL%/}"
 fi
 
-if [ -n "$RUBY_BUILD_SKIP_MIRROR" ]; then
-  unset RUBY_BUILD_MIRROR_URL
+if [ -n "$MAGICK_BUILD_SKIP_MIRROR" ]; then
+  unset MAGICK_BUILD_MIRROR_URL
 fi
 
 if echo test | compute_sha2 >/dev/null; then
   HAS_SHA2_SUPPORT=1
 else
   unset HAS_SHA2_SUPPORT
-  unset RUBY_BUILD_MIRROR_URL
+  unset MAGICK_BUILD_MIRROR_URL
 fi
 
 if echo test | compute_md5 >/dev/null; then
@@ -1140,14 +1140,14 @@ else
 fi
 
 SEED="$(date "+%Y%m%d%H%M%S").$$"
-LOG_PATH="${TMP}/ruby-build.${SEED}.log"
+LOG_PATH="${TMP}/magick-build.${SEED}.log"
 RUBY_BIN="${PREFIX_PATH}/bin/ruby"
 CWD="$(pwd)"
 
-if [ -z "$RUBY_BUILD_BUILD_PATH" ]; then
-  BUILD_PATH="${TMP}/ruby-build.${SEED}"
+if [ -z "$MAGICK_BUILD_BUILD_PATH" ]; then
+  BUILD_PATH="${TMP}/magick-build.${SEED}"
 else
-  BUILD_PATH="$RUBY_BUILD_BUILD_PATH"
+  BUILD_PATH="$MAGICK_BUILD_BUILD_PATH"
 fi
 
 exec 4<> "$LOG_PATH" # open the log file at fd 4
