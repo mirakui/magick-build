@@ -1,0 +1,1 @@
+install_package "ImageMagick-6.9.0-10" "ftp://ftp.kddlabs.co.jp/graphics/ImageMagick/ImageMagick-6.9.0-10.tar.gz"
